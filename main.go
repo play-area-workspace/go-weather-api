@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"time"
@@ -66,12 +67,28 @@ func main() {
 	cities["London"] = [2]string{"51.5074", "-0.1278"}
 	cities["Tokyo"] = [2]string{"35.6895", "139.6917"}
 
-	for _, city := range cities {
+	for cityName, city := range cities {
 		temperature, err := fetchWeatherData(city[0], city[1], apiKey, logger)
 		if err != nil {
-			logger.Error("Failed to fetch weather data", "error", err.Error(), "city", city)
+			logger.Error("Failed to fetch weather data", "error", err.Error(), "city", cityName)
 			continue
 		}
-		logger.Info("Fetched weather data successfully", "city", city, "temperature(K)", temperature.Temp)
+
+		tempC := temperature.Temp - 273.15
+		logger.Info("Fetched weather data successfully", "city", cityName,
+			"temperature(°C)", round(tempC, 2, "round"))
+	}
+}
+
+// Round temperature to 2 decimal points, using ceil or floor as needed
+func round(val float64, decimals int, mode string) float64 {
+	mult := math.Pow(10, float64(decimals))
+	switch mode {
+	case "ceil":
+		return math.Ceil(val*mult) / mult
+	case "floor":
+		return math.Floor(val*mult) / mult
+	default: // "round"
+		return math.Round(val*mult) / mult
 	}
 }
