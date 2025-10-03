@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -20,7 +21,8 @@ type WeatherResponse struct {
 	Main Temperature `json:"main"`
 }
 
-func fetchWeatherData(lat, lon, apiKey string, logger *slog.Logger) (*Temperature, error) {
+func fetchWeatherData(cityName, lat, lon, apiKey string, logger *slog.Logger, ch chan<- string, wg *sync.WaitGroup) {
+	defer wg.Done()
 
 	url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&appid=%s", lat, lon, apiKey)
 
@@ -28,16 +30,15 @@ func fetchWeatherData(lat, lon, apiKey string, logger *slog.Logger) (*Temperatur
 	resp, err := http.Get(url)
 	if err != nil {
 		logger.Error("Error making HTTP request", "error", err.Error())
-		return nil, err
 	}
 
 	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(&weatherResponse); err != nil {
 		logger.Error("Error decoding JSON response", "error", err.Error())
-		return nil, err
 	}
-	return &weatherResponse.Main, nil
+	tempC := weatherResponse.Main.Temp - 273.15
+	ch <- fmt.Sprintf("City: %s, Temperature: %.2f°C", cityName, round(tempC, 2, "round"))
 }
 
 func main() {
@@ -67,17 +68,23 @@ func main() {
 	cities["London"] = [2]string{"51.5074", "-0.1278"}
 	cities["Tokyo"] = [2]string{"35.6895", "139.6917"}
 
-	for cityName, city := range cities {
-		temperature, err := fetchWeatherData(city[0], city[1], apiKey, logger)
-		if err != nil {
-			logger.Error("Failed to fetch weather data", "error", err.Error(), "city", cityName)
-			continue
-		}
+	var wg sync.WaitGroup
+	ch := make(chan string)
 
-		tempC := temperature.Temp - 273.15
-		logger.Info("Fetched weather data successfully", "city", cityName,
-			"temperature(°C)", round(tempC, 2, "round"))
+	for cityName, city := range cities {
+		wg.Add(1)
+		go fetchWeatherData(cityName, city[0], city[1], apiKey, logger, ch, &wg)
 	}
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	for result := range ch {
+		fmt.Println(result)
+	}
+
 }
 
 // Round temperature to 2 decimal points, using ceil or floor as needed
