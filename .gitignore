@@ -1,0 +1,43 @@
+# Local environment variables
+.env
+.env.*
+!.env.example
+
+# Go build artifacts
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+cover.out
+coverage.txt
+profile.out
+
+# Dependency directories (if you are not using Go Modules or if you have a legacy setup)
+vendor/
+Godeps/
+
+# IDE and editor configuration files
+# VS Code
+.vscode/
+# GoLand / JetBrains
+.idea/
+# Vim
+*.swp
+*~
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# OS-specific files
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
